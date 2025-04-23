@@ -1,5 +1,5 @@
 # Juego de Memoria
-Juego de memoria , hecha con react, tailwin 
+Juego de memoria , hecha con react, tailwin. Se puede escojer de numeros o frutas
 
 
 #Tecnologias
