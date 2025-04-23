@@ -2,35 +2,56 @@ import React, { useEffect } from "react";
 import { useState } from "react";
 
 const GameMemory = () => {
-  const [size, setSIze] = useState(5);
+  const [size, setSIze] = useState(2);
   const [cards, setCards] = useState([]);
   const [volteadas, setVolteadas] = useState([]);
   const [resueltas, setResueltas] = useState([]);
   const [disable, setDisable] = useState(false);
   const [win, setWin] = useState(false);
   const [score, setScore] = useState(0);
-
-  useEffect(() => {
-    if (cards.length === resueltas.length) {
-      setWin(true);
-    }
-  }, [resueltas]);
+  const [iniciadoJuego, setIniciadoJuego] = useState(true);
+  const [intentos, setIntentos] = useState(0);
+  const [perder, setPerder] = useState(false);
+  const [tipoCards, setTipoCards] = useState("numeros");
 
   const comenzarJuego = () => {
+    let newArray;
+    const tamaño = size * size;
+    const mitad = size;
+
+    if (tipoCards === "frutas") {
+      setTipoCards("frutas");
+
+      let porcion = [];
+      for (let i = 0; i < mitad; i++) {
+        porcion.push(frutasConEmojis[i]);
+      }
+
+      newArray = [...porcion, ...porcion]
+        .slice(0, tamaño)
+        .sort(() => Math.random() - 0.5)
+        .map((f, index) => {
+          return { id: index, fruta: f };
+        });
+    }
+    if (tipoCards === "numeros") {
+      setTipoCards("numeros");
+      const porcion = [...Array(mitad).keys()];
+      newArray = [...porcion, ...porcion]
+        .slice(0, tamaño)
+        .sort(() => Math.random() - 0.5)
+        .map((number, index) => {
+          return { id: index, number };
+        });
+    }
+
+    setIntentos(0);
+    setIniciadoJuego(true);
     setVolteadas([]);
     setDisable(false);
     setResueltas([]);
     setWin(false);
-
-    const tamaño = size * size;
-    const mitad = size;
-    const porcion = [...Array(mitad).keys()];
-    const newArray = [...porcion, ...porcion]
-      .slice(0, tamaño)
-      .sort(() => Math.random() - 0.5)
-      .map((number, index) => {
-        return { id: index, number };
-      });
+    setPerder(false);
     setScore(0);
     setCards(newArray);
   };
@@ -58,21 +79,42 @@ const GameMemory = () => {
     }
   };
 
-  function ChecarPar(segundoId) {
+  function siResuelta(segundoId) {
     const primerId = volteadas[0];
+    setResueltas((previos) => [...previos, primerId, segundoId]);
+    setScore((previos) => previos + 10);
+    setVolteadas([]);
+    setDisable(false);
+  }
+  function noResuelta() {
+    setTimeout(() => {
+      setVolteadas([]);
+      setDisable(false);
+    }, 1000);
+  }
+
+  function ChecarPar(segundoId) {
+    setIntentos((previos) => previos + 1);
+    const primerId = volteadas[0];
+
     if (
+      (tipoCards === "numeros") &
       (cards[primerId].number === cards[segundoId].number) &
       (cards[primerId].id !== cards[segundoId].id)
     ) {
-      setResueltas((previos) => [...previos, primerId, segundoId]);
-      setScore((previos) => previos + 10);
-      setVolteadas([]);
-      setDisable(false);
+      siResuelta(segundoId);
     } else {
-      setTimeout(() => {
-        setVolteadas([]);
-        setDisable(false);
-      }, 1000);
+      noResuelta();
+    }
+
+    if (
+      (tipoCards === "frutas") &
+      (cards[primerId].fruta === cards[segundoId].fruta) &
+      (cards[primerId].id !== cards[segundoId].id)
+    ) {
+      siResuelta(segundoId);
+    } else {
+      noResuelta();
     }
   }
 
@@ -80,14 +122,53 @@ const GameMemory = () => {
     comenzarJuego();
   }
 
+  function cardsSetTimeOut(id, simbolo) {
+    if (iniciadoJuego) {
+      return simbolo;
+    }
+
+    return isvolteada(id) ? simbolo : "?";
+  }
+
   useEffect(() => {
-    comenzarJuego();
-  }, [size]);
+    console.log("si entro en e l useeffect");
+    const limite = size * 2;
+    if (intentos === limite) {
+      setTimeout(() => {
+        setPerder(true);
+        setDisable(true);
+      }, 1010);
+    }
+  }, [intentos]);
+
+  useEffect(() => {
+    if ((tipoCards === "numeros") | (tipoCards === "frutas")) {
+      comenzarJuego();
+    }
+  }, [size, tipoCards]);
+
+  useEffect(() => {
+    if (iniciadoJuego) {
+      setTimeout(() => {
+        setIniciadoJuego(false);
+      }, 3000);
+    }
+  }, [iniciadoJuego]);
+
+  useEffect(() => {
+    console.log("esta resolviendo correcto");
+    if (
+      (cards.length > 0) &
+      (resueltas.length > 0) &
+      (cards.length === resueltas.length)
+    ) {
+      console.log("se esta dando win true correcto");
+      setWin(true);
+    }
+  }, [resueltas]);
 
   const isvolteada = (id) => volteadas.includes(id) | resueltas.includes(id);
 
-  console.log("todas las cartas", cards);
-  console.log("todas las resueltas", resueltas);
   return (
     <div className="min-h-screen bg-teal-100  flex flex-col justify-center items-center">
       <h1 className="mb-6 font-bold text-5xl">Memory Game</h1>
@@ -105,6 +186,18 @@ const GameMemory = () => {
           onChange={(e) => handleInput(e)}
           className="w-40 rounded-lg p-1"
         />
+        <h3>
+          INTENTOS {intentos}/{size * 2}
+        </h3>
+        <label htmlFor="tipoCartas"> TIPO DE CARTAS : </label>
+        <input
+          type="text"
+          name=""
+          id="tipoCartas"
+          value={tipoCards}
+          onChange={(e) => setTipoCards(e.target.value.toLocaleLowerCase())}
+        />
+        <h2>TIPOS DE CARTAS DISPONIBLES: FRUTAS, NUMEROS</h2>
       </div>
 
       <div
@@ -126,12 +219,20 @@ const GameMemory = () => {
             } `}
             onClick={() => handleClik(card.id)}
           >
-            {isvolteada(card.id) ? card.number : "?"}
+            {tipoCards === "numeros"
+              ? cardsSetTimeOut(card.id, card.number)
+              : tipoCards === "frutas"
+              ? cardsSetTimeOut(card.id, card.fruta)
+              : ""}
           </div>
         ))}
       </div>
-      <div className=" animate-bounce font-bold text-green-600 text-5xl">
-        {win ? "WIN !" : ""}
+      <div
+        className={` animate-bounce font-bold text-5xl  ${
+          win ? "text-green-600 " : perder ? "text-red-600" : ""
+        } `}
+      >
+        {win ? "Ganaste !" : perder ? "Perdiste!" : ""}
       </div>
       <div className="mt-5">
         <button
@@ -140,7 +241,7 @@ const GameMemory = () => {
           }`}
           onClick={() => handleReset()}
         >
-          {win ? "JUGAR DE NUEVO" : "RESET"}
+          {win ? "JUGAR DE NUEVO" : perder ? "JUGAR DE NUEVO" : "RESETEAR"}
         </button>
       </div>
     </div>
@@ -148,3 +249,106 @@ const GameMemory = () => {
 };
 
 export default GameMemory;
+
+const frutasConEmojis = [
+  "🍎",
+  "🍏",
+  "🍌",
+  "🍐",
+  "🍊",
+  "🍋",
+  "🍉",
+  "🍇",
+  "🍓",
+  "🍈",
+  "🍒",
+  "🥭",
+  "🍍",
+  "🥝",
+  "🥥",
+  "🫐",
+  "🍅",
+  "🍆",
+  "🌰",
+  "🫒",
+  "🥒",
+  "🥬",
+  "🥭",
+  "🌺",
+  "🌼",
+  "🌸",
+  "🌳",
+  "🌿",
+  "🌾",
+  "💮",
+  "🌙",
+  "🌝",
+  "🌞",
+  "🌈",
+  "💐",
+  "🌼",
+  "⭐",
+  "🍑",
+  "🍑",
+  "🍑",
+  "🍊",
+  "🍊",
+  "🍋",
+  "👹",
+  "🫐",
+  "🫐",
+  "🔮",
+  "😝",
+  "🥠",
+  "👑",
+  "🍼",
+  "🧡",
+  "💗",
+  "🍈",
+  "🍈",
+  "🍈",
+  "🧊",
+  "🍎",
+  "🍎",
+  "🍏",
+  "🍌",
+  "🍌",
+  "🟠",
+  "💚",
+  "🧟‍♂️",
+  "🖤",
+  "🤍",
+  "💓",
+  "💛",
+  "💚",
+  "🍇",
+  "🌼",
+  "👾",
+  "🥝",
+  "🟢",
+  "🟣",
+  "🕷️",
+  "🔵",
+  "💜",
+  "🧡",
+  "❤️",
+  "🍈",
+  "🤢",
+  "🐍",
+  "⚠️",
+  "🥒",
+  "🎃",
+  "🌵",
+  "🍂",
+  "🟤",
+  "⚫",
+  "🪵",
+  "🔴",
+  "🫐",
+  "✨",
+  "🟠",
+  "🧊",
+  "🌀",
+  "🍈",
+  "🍒",
+];
